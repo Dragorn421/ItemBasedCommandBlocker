@@ -1,8 +1,9 @@
 package fr.dragorn421.itembasedcommandblocker;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -14,13 +15,15 @@ public class ItemFilter
 
 	final private Material type;
 	final private short data;
-	final private FilterList<Enchantment> enchantments;
+	final private Set<Enchantment> neededEnchantments;
+	final private Set<Enchantment> forbiddenEnchantments;
 
-	public ItemFilter(final Material type, final short data, final FilterList<Enchantment> enchantments)
+	public ItemFilter(final Material type, final short data, final Set<Enchantment> neededEnchantments, final Set<Enchantment> forbiddenEnchantments)
 	{
 		this.type = type;
 		this.data = data<0?-1:data;
-		this.enchantments = enchantments;
+		this.neededEnchantments = neededEnchantments;
+		this.forbiddenEnchantments = forbiddenEnchantments;
 		//System.out.println(this.toString());
 	}
 
@@ -32,16 +35,18 @@ public class ItemFilter
 			System.out.println("=type "+(this.type == null || this.type == is.getType()));
 			System.out.println("=data "+(this.data == -1 || this.data == is.getDurability()));
 			for(final Enchantment ench : is.getEnchantments().keySet())
-				if(!this.enchantments.isAllowed(ench))
-					System.out.println("ench "+true);
+				if((!this.neededEnchantments.isEmpty() && !this.neededEnchantments.contains(ench)) || this.forbiddenEnchantments.contains(ench))
+					System.out.println("ench "+ench+" "+true);
 		}//*/
 		if(	is != null
 			&& (this.type == null || this.type == is.getType())
 			&& (this.data == -1 || this.data == is.getDurability()))
 		{
-			for(final Enchantment ench : is.getEnchantments().keySet())
-				if(!this.enchantments.isAllowed(ench))
-					return false;
+			final Set<Enchantment> enchantments = is.getEnchantments().keySet();
+			if(!enchantments.containsAll(this.neededEnchantments))
+				return false;
+			if(!Collections.disjoint(enchantments, this.forbiddenEnchantments))
+				return false;
 			return true;
 		}
 		return false;
@@ -58,7 +63,7 @@ public class ItemFilter
 	@Override
 	public String toString()
 	{
-		return "ItemFilter{type="+this.type+",data="+this.data+",enchantments="+this.enchantments.toString()+"}";
+		return "ItemFilter{type="+this.type+",data="+this.data+",neededEnchantments="+this.neededEnchantments.toString()+",forbiddenEnchantments="+this.forbiddenEnchantments.toString()+"}";
 	}
 
 	static public ItemFilter fromConfig(final ConfigurationSection cs)
@@ -70,8 +75,16 @@ public class ItemFilter
 		else
 			type = Material.matchMaterial(typeStr);
 		final short data = (short) cs.getInt("data", -1);
-		final List<String> enchantmentsStr = cs.getStringList("enchantments");
-		final Collection<Enchantment> enchantments = new HashSet<>();
+		final Set<Enchantment> neededEnchantments = ItemFilter.convertEnchantments(cs.getStringList("with-enchantments"));
+		final Set<Enchantment> forbiddenEnchantments = ItemFilter.convertEnchantments(cs.getStringList("without-enchantments"));
+		return new ItemFilter(type, data, neededEnchantments, forbiddenEnchantments);
+	}
+
+	static public Set<Enchantment> convertEnchantments(final List<String> enchantmentsStr)
+	{
+		final Set<Enchantment> enchantments = new HashSet<>();
+		if(enchantmentsStr == null)
+			return enchantments;
 		for(final String enchStr : enchantmentsStr)
 		{
 			final Enchantment ench = Enchantment.getByName(enchStr);
@@ -80,8 +93,7 @@ public class ItemFilter
 			else
 				enchantments.add(ench);
 		}
-		final boolean whitelist = cs.getBoolean("ench-are-whitelist", true);
-		return new ItemFilter(type, data, new FilterList<>(enchantments, whitelist));
+		return enchantments;
 	}
 
 }
