@@ -29,13 +29,13 @@ filters:
     type: DIAMOND_PICKAXE
     #La data value de l'item recherché. Mettre data à -1 permet d'ignorer la data value.
     data: -1
-    #La liste des enchantements, recherchés ou non sur l'item selon la valeur de ench-are-whitelist
+    #Les liste des enchantements, recherchés ou non sur l'item
     #Les valeurs doivent correspondre aux valeurs sur cette page https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/enchantments/Enchantment.html
-    enchantments:
+    #with-enchantments permet de bloquer la commande pour un item possédant au moins tous les enchantments de la liste
+    with-enchantments:
     - SILK_TOUCH
-    #ench-are-whitelist mis à true signifie que l'objet bloquera la commande s'il possède au moins un des enchantements de la liste.
-    #ench-are-whitelist mis à false signifie que l'objet bloquera la commande s'il ne possède pas les enchantements définis.
-    ench-are-whitelist: true
+    #without-enchantments permet de ne pas bloquer la commande pour un item possédant au moins un des enchantments de la liste
+    without-enchantments: []
 ```
 ##### Liens
 https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Material.html
