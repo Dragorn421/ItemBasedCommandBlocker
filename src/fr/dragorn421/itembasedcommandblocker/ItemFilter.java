@@ -1,9 +1,9 @@
 package fr.dragorn421.itembasedcommandblocker;
 
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -15,10 +15,10 @@ public class ItemFilter
 
 	final private Material type;
 	final private short data;
-	final private Set<Enchantment> neededEnchantments;
-	final private Set<Enchantment> forbiddenEnchantments;
+	final private Map<Enchantment, Integer> neededEnchantments;
+	final private Map<Enchantment, Integer> forbiddenEnchantments;
 
-	public ItemFilter(final Material type, final short data, final Set<Enchantment> neededEnchantments, final Set<Enchantment> forbiddenEnchantments)
+	public ItemFilter(final Material type, final short data, final Map<Enchantment, Integer> neededEnchantments, final Map<Enchantment, Integer> forbiddenEnchantments)
 	{
 		this.type = type;
 		this.data = data<0?-1:data;
@@ -29,24 +29,34 @@ public class ItemFilter
 
 	public boolean matchesItem(final ItemStack is)
 	{
-/*		if(is != null)
-		{
-			System.out.println(is);
-			System.out.println("=type "+(this.type == null || this.type == is.getType()));
-			System.out.println("=data "+(this.data == -1 || this.data == is.getDurability()));
-			for(final Enchantment ench : is.getEnchantments().keySet())
-				if((!this.neededEnchantments.isEmpty() && !this.neededEnchantments.contains(ench)) || this.forbiddenEnchantments.contains(ench))
-					System.out.println("ench "+ench+" "+true);
-		}//*/
 		if(	is != null
 			&& (this.type == null || this.type == is.getType())
 			&& (this.data == -1 || this.data == is.getDurability()))
 		{
-			final Set<Enchantment> enchantments = is.getEnchantments().keySet();
-			if(!enchantments.containsAll(this.neededEnchantments))
-				return false;
-			if(!Collections.disjoint(enchantments, this.forbiddenEnchantments))
-				return false;
+			final Map<Enchantment, Integer> enchantments = is.getEnchantments();
+			for(final Entry<Enchantment, Integer> needed : this.neededEnchantments.entrySet())
+			{
+				final Integer level = enchantments.get(needed.getKey());
+				// if the item does not have the enchantment he needs
+				if(level == null)
+					return false;
+				// if the enchantment needs to be a certain level and not matched
+				if(needed.getValue() != 0 && level != needed.getValue())
+					return false;
+			}
+			for(final Entry<Enchantment, Integer> ench : enchantments.entrySet())
+			{
+				final Integer forbiddenLevel = this.forbiddenEnchantments.get(ench.getKey());
+				// if not forbidden at all
+				if(forbiddenLevel == null)
+					continue;
+				// if forbidden for all levels
+				if(forbiddenLevel == 0)
+					return false;
+				// if level is forbidden
+				if(forbiddenLevel == ench.getValue())
+					return false;
+			}
 			return true;
 		}
 		return false;
@@ -75,23 +85,37 @@ public class ItemFilter
 		else
 			type = Material.matchMaterial(typeStr);
 		final short data = (short) cs.getInt("data", -1);
-		final Set<Enchantment> neededEnchantments = ItemFilter.convertEnchantments(cs.getStringList("with-enchantments"));
-		final Set<Enchantment> forbiddenEnchantments = ItemFilter.convertEnchantments(cs.getStringList("without-enchantments"));
+		final Map<Enchantment, Integer> neededEnchantments = ItemFilter.convertEnchantments(cs.getStringList("with-enchantments"));
+		final Map<Enchantment, Integer> forbiddenEnchantments = ItemFilter.convertEnchantments(cs.getStringList("without-enchantments"));
 		return new ItemFilter(type, data, neededEnchantments, forbiddenEnchantments);
 	}
 
-	static public Set<Enchantment> convertEnchantments(final List<String> enchantmentsStr)
+	static public Map<Enchantment, Integer> convertEnchantments(final List<String> enchantmentsStr)
 	{
-		final Set<Enchantment> enchantments = new HashSet<>();
+		final Map<Enchantment, Integer> enchantments = new HashMap<>();
 		if(enchantmentsStr == null)
 			return enchantments;
 		for(final String enchStr : enchantmentsStr)
 		{
-			final Enchantment ench = Enchantment.getByName(enchStr);
+			final String[] args = enchStr.split(":", 2);
+			final Enchantment ench = Enchantment.getByName(args[0]);
 			if(ench == null)
 				{}//TODO ench not found/mistype
 			else
-				enchantments.add(ench);
+			{
+				Integer level = 0;
+				if(args.length != 1)
+				{
+					try {
+						level = Integer.parseInt(args[1]);
+						if(level <= 0)
+							level = 0;
+					} catch(final NumberFormatException e) {
+						//TODO invalid ench level number
+					}
+				}
+				enchantments.put(ench, level);
+			}
 		}
 		return enchantments;
 	}

@@ -31,6 +31,7 @@ filters:
     data: -1
     #Les liste des enchantements, recherchés ou non sur l'item
     #Les valeurs doivent correspondre aux valeurs sur cette page https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/enchantments/Enchantment.html
+    #Un niveau peut être précisé pour chaque enchantement, par exemple on peut bloquer uniquement Slk Touch III avec "SILK_TOUCH:3"
     #with-enchantments permet de bloquer la commande pour un item possédant au moins tous les enchantments de la liste
     with-enchantments:
     - SILK_TOUCH
